@@ -1,12 +1,14 @@
 #ifndef USEFUL_H
 #define USEFUL_H
 
+#include <cstdint>
+
 #include <vector>
 #include <fstream>
 #include <algorithm>
 #include <cstdint>
 
-/*
+
 #include <algorithm>
 #include <utility>
 #include <iostream>
@@ -14,7 +16,7 @@
 #include <string>
 #include <string.h>
 #include <cassert>
-*/
+
 
 using std::vector;
 //using std::pair;

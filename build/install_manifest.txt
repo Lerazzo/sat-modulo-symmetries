@@ -1,0 +1,15 @@
+C:/Program Files (x86)/SMS/bin/smsg.exe
+C:/Program Files (x86)/SMS/bin/smsd.exe
+C:/Program Files (x86)/SMS/lib/libsms.dll.a
+C:/Program Files (x86)/SMS/bin/libsms.dll
+C:/Program Files (x86)/SMS/lib/libsmsdir.dll.a
+C:/Program Files (x86)/SMS/bin/libsmsdir.dll
+C:/Program Files (x86)/SMS/lib/libsms_static.a
+C:/Program Files (x86)/SMS/lib/libsmsdir_static.a
+C:/Program Files (x86)/SMS/lib/libcadical.a
+C:/Program Files (x86)/SMS/include/sms/sms.hpp
+C:/Program Files (x86)/SMS/include/sms/cadical.hpp
+C:/Program Files (x86)/SMS/include/sms/cadicalSMS.hpp
+C:/Program Files (x86)/SMS/include/sms/useful.h
+C:/Program Files (x86)/SMS/include/sms/graphChecker.hpp
+C:/Program Files (x86)/SMS/include/sms/minimalityCheck.hpp

@@ -152,11 +152,15 @@ inline void Internal::subsume_clause (Clause *subsuming, Clause *subsumed) {
     stats.subred++;
   else
     stats.subirr++;
-  mark_garbage (subsumed);
-  if (subsumed->redundant || !subsuming->redundant)
+  if (subsumed->redundant || !subsuming->redundant) {
+    mark_garbage (subsumed);
     return;
+  }
   LOG ("turning redundant subsuming clause into irredundant clause");
   subsuming->redundant = false;
+  if (proof)
+    proof->strengthen (subsuming->id);
+  mark_garbage (subsumed);
   stats.current.irredundant++;
   stats.added.irredundant++;
   stats.irrlits += subsuming->size;
@@ -177,17 +181,13 @@ void Internal::strengthen_clause (Clause *c, int lit) {
   LOG (c, "removing %d in", lit);
   if (proof) {
     LOG (lrat_chain, "strengthening clause with chain");
-    if (opts.lrat && !opts.lratexternal)
-      proof->strengthen_clause (c, lit, lrat_chain);
-    else
-      proof->strengthen_clause (c, lit);
+    proof->strengthen_clause (c, lit, lrat_chain);
   }
   if (!c->redundant)
     mark_removed (lit);
   auto new_end = remove (c->begin (), c->end (), lit);
   assert (new_end + 1 == c->end ()), (void) new_end;
   (void) shrink_clause (c, c->size - 1);
-  c->used = true;
   LOG (c, "strengthened");
   external->check_shrunken_clause (c);
 }
@@ -258,6 +258,7 @@ inline int Internal::try_to_subsume_clause (Clause *c,
           dummy.literals[1] = other;
           flipped = (sign < 0) ? -lit : INT_MIN;
         }
+        dummy.moved = false;
         dummy.redundant = false;
         dummy.size = 2;
         dummy.id = bin.id;
@@ -301,7 +302,7 @@ inline int Internal::try_to_subsume_clause (Clause *c,
 
   if (flipped) {
     LOG (d, "strengthening");
-    if (opts.lrat && !opts.lratexternal) {
+    if (lrat) {
       assert (lrat_chain.empty ());
       lrat_chain.push_back (c->id);
       lrat_chain.push_back (d->id);

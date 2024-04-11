@@ -649,7 +649,7 @@ int coloringDPLL(int vertex_heuristic, int color_heuristic, const adjacency_matr
 					maxUncoloredNeighbors = uncoloredNeighbors;
 				}
 				// the k-th seen vertex is picked with probability 1/k -> will result in uniform distribution
-				if (random() % ++numUncoloredSeen == 0)
+				if (rand() % ++numUncoloredSeen == 0)
 				{
 					rv = v;
 				}
@@ -736,7 +736,7 @@ int coloringDPLL(int vertex_heuristic, int color_heuristic, const adjacency_matr
 		case 2: // shuffle randomly
 			for (unsigned int i = numAvailable[nextDec]; i > 0; i--)
 			{
-				int ridx = random() % i;
+				int ridx = rand() % i;
 				color tc = availableColors[nextDec][i - 1];
 				availableColors[nextDec][i - 1] = availableColors[nextDec][ridx];
 				availableColors[nextDec][ridx] = tc;

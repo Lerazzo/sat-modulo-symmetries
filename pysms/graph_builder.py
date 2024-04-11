@@ -246,7 +246,7 @@ class GraphEncodingBuilder(IDPool, list):
 
         python_args_SMS = " ".join(f"--{param} {value}" for param, value in self.paramsSMS.items())
 
-        sms_command = "time " if self.DEBUG else ""
+        sms_command = ""#"time " if self.DEBUG else ""
         sms_command += f"{program} {python_args_SMS} {args_SMS} --dimacs {cnfFile}"  # TODO eventually parse args_SMS to allow to override
         for arg in forwarding_args:
             sms_command += f" '{arg}'"
