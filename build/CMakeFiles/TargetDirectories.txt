@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 C:/Users/Morten/Documents/GitHub/SMS/build/CMakeFiles/edit_cache.dir
 C:/Users/Morten/Documents/GitHub/SMS/build/CMakeFiles/rebuild_cache.dir
 C:/Users/Morten/Documents/GitHub/SMS/build/CMakeFiles/list_install_components.dir
@@ -16,3 +17,13 @@ C:/Users/Morten/Documents/GitHub/SMS/build/src/CMakeFiles/list_install_component
 C:/Users/Morten/Documents/GitHub/SMS/build/src/CMakeFiles/install.dir
 C:/Users/Morten/Documents/GitHub/SMS/build/src/CMakeFiles/install/local.dir
 C:/Users/Morten/Documents/GitHub/SMS/build/src/CMakeFiles/install/strip.dir
+=======
+C:/Users/Morten/Documents/GitHub/sat-modulo-symmetries/build/CMakeFiles/INSTALL.dir
+C:/Users/Morten/Documents/GitHub/sat-modulo-symmetries/build/CMakeFiles/ALL_BUILD.dir
+C:/Users/Morten/Documents/GitHub/sat-modulo-symmetries/build/CMakeFiles/ZERO_CHECK.dir
+C:/Users/Morten/Documents/GitHub/sat-modulo-symmetries/build/src/CMakeFiles/sms.dir
+C:/Users/Morten/Documents/GitHub/sat-modulo-symmetries/build/src/CMakeFiles/smsdir.dir
+C:/Users/Morten/Documents/GitHub/sat-modulo-symmetries/build/src/CMakeFiles/smsg.dir
+C:/Users/Morten/Documents/GitHub/sat-modulo-symmetries/build/src/CMakeFiles/smsd.dir
+C:/Users/Morten/Documents/GitHub/sat-modulo-symmetries/build/src/CMakeFiles/INSTALL.dir
+>>>>>>> ab8fdebcab061e40ed95b2e2bf4c297fdc017f3b

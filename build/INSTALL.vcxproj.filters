@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\Morten\Documents\GitHub\sat-modulo-symmetries\build\CMakeFiles\1b292e23a0b3ed5901939018efd33bfa\INSTALL_force.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{4D4A933D-678A-3935-B6C8-8D787C64A1DD}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>
