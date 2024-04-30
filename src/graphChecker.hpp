@@ -40,6 +40,7 @@ public:
     int counter = 0; // number of calls since last check
     int frequency = 30;
     bool checkFinal = true; // force check for fully defined graphs
+    bool outerplanarity = false;
 
     /**
      * @brief Check partially defined graph and throw partially defined graph which should be forbidden

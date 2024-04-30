@@ -81,6 +81,12 @@ def getDefaultParser():
 
     constraint_args.add_argument("--fixed-induced-subgraph", type=str, help="file containing the fixed induced subgraph")
     constraint_args.add_argument("--fixed-induced-subgraph-line", type=int, help="choose line which is selected as induced subgraph")
+    
+    # outerplanarity
+
+    constraint_args.add_argument("--outerplanar2", action="store_true", help="ensure that graph is outerplanar")
+    constraint_args.add_argument("--outerplanar", action="store_true", help="check outerplanarity instead of planarity")
+
     return parser
 
 
@@ -442,6 +448,17 @@ class GraphEncodingBuilder(IDPool, list):
                                 self.append([self.var_edge(u, v)])
                         self.paramsSMS["fixed-subgraph-size"] = n
                         break
+
+        if args.outerplanar2:
+            print("Did you remember to make V one higher than it should be?")
+            if not args.planar_kuratowski:
+                print("DID YOU FORGET --planar?")
+
+            for u in range(self.n-1):
+                self.append([self.var_edge(u,self.n-1)])
+
+        if args.outerplanar:
+            self.paramsSMS["outerplanar"] = True  # DEFAULT planarity frequency
 
         if args.bcp:  # !!!!!!!! must be applied at the end
             print("Number of propagated literals:", self.bcp(), file=stderr)

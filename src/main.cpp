@@ -27,6 +27,9 @@ int nextFreeVariableUniversal;
 int thickness2Frequency; // frequency for checking whether the graph has indeed thickness 2
 int thickness2FrequencyMultigraph;
 int planarityFrequency;
+
+bool outerplanarity;
+
 int frequencyForbiddenSubgraphs;
 int coloringAlgo; // 0 = simple, 1 = DPLL, 2 = SAT
 int independenceNumberUpperBound;
@@ -195,6 +198,11 @@ int main(int argc, char const **argv)
       ("irredundant-sym-clauses", po::bool_switch(&config.irredundantSymClauses), "Mark symmetry-breaking clauses as irredundant")
       ("combine-static-dynamic", po::bool_switch(&config.combineStaticPlusDynamic), "Combine static with dynamic (SMS) symmetry breaking")
       ("planarity-frequency,planar", po::value<int>(&planarityFrequency), "The frequency with which to call the planarity check (0 means never)")
+
+      ("outerplanar", po::value<bool>(&outerplanarity), "Enable outerplanaritytest")
+
+            
+
       ("thickness2", po::value<int>(&thickness2Frequency), "The frequency with which to test thickness two (0 means never)")
       ("thickness2multi", po::value<int>(&thickness2FrequencyMultigraph), "Frequency in which the second and third graph are tested for planarity")
       ("frequency-connected-components-swap,fc", po::value<int>(&config.frequencyConnectedComponentsSwap), "The frequency with which to call a special minimality check based on analysis of connected components")
@@ -500,16 +508,15 @@ int main(int argc, char const **argv)
         solver = new ClingoSolver(config, cnf);
 #endif
     }
-
 #ifndef DIRECTED
     if (planarityFrequency)
     {
-        solver->addPartiallyDefinedGraphChecker(new PlanarityChecker(planarityFrequency));
+        solver->addPartiallyDefinedGraphChecker(new PlanarityChecker(planarityFrequency,outerplanarity));
     }
 #else
     if (planarityFrequency)
     {
-        solver->addPartiallyDefinedGraphChecker(new DirectedPlanarityChecker(planarityFrequency));
+        solver->addPartiallyDefinedGraphChecker(new DirectedPlanarityChecker(planarityFrequency,outerplanarity));
     }
 #endif
     if (thickness2Frequency)
