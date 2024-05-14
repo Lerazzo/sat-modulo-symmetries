@@ -17,4 +17,4 @@ keywords = ["graphs", "propositional formula", "encoding", "SAT", "CNF"]
 #Repository = "https://github.com/markirch/sat-modulo-symmetries"
 
 [tool.setuptools]
-packages = ["pysms"]
+packages = ["pysms", "encodings"]

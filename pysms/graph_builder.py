@@ -465,6 +465,9 @@ class GraphEncodingBuilder(IDPool, list):
 
     # ------------degree encodings--------------
 
+    def funTest(self):
+        print("Dinky")
+
     def minDegree(self, delta, countertype=DEFAULT_COUNTER) -> list[list[int]]:
         """Minimum degree at least delta
 
@@ -481,6 +484,7 @@ class GraphEncodingBuilder(IDPool, list):
         :param countertype: specify a cardinality encoding. Default value = DEFAULT_COUNTER
 
         """
+        print("dinky")
         return self.degreeBounds(self.V, None, delta, encoding=countertype)
 
     def degreeBounds(self, verts, lower, upper, within=False, encoding=DEFAULT_COUNTER) -> list[list[int]]:

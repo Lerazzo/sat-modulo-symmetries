@@ -19,9 +19,6 @@ def planar_encoding_schnyder(V, var_edge, vpool, constraints, outerplanar=False,
     for v in all_variables:
         all_variables_index[v] = vpool.id()
 
-    for v in all_variables:
-        print(v, all_variables_index[v])
-
     def var(L):
         return all_variables_index[L]
 
@@ -33,7 +30,10 @@ def planar_encoding_schnyder(V, var_edge, vpool, constraints, outerplanar=False,
 
     if DEBUG:
         print("c\tdefine linear orders")
-    for i in range(3):
+    rangei = 3
+    if outerplanar: rangei = 2
+
+    for i in range(rangei): # should be 2 if outerplanar?
         # anti-symmetrie + connexity
         for u, v in permutations(V, 2):
             constraints.append([+var_u_smaller_v_i(u, v, i), +var_u_smaller_v_i(v, u, i)])
@@ -270,17 +270,17 @@ class PlanarGraphBuilder(GraphEncodingBuilder):
             self.paramsSMS["thickness2"] = "5"
             self.paramsSMS["initial-partition"] = " ".join(map(str, map(len, partition)))
 
-
-args, forwarding_args = getPlanarParser().parse_known_args()
-if forwarding_args:
-    print("WARNING: Unknown arguments for python script which are forwarded to SMS:", forwarding_args, file=stderr)
-b = PlanarGraphBuilder(args.vertices, directed=args.directed, staticInitialPartition=args.static_partition, underlyingGraph=args.underlying_graph)
-b.add_constraints_by_arguments(args)
-if args.no_solve:
-    if args.cnf_file:
-        with open(args.cnf_file, "w") as cnf_fh:
-            b.print_dimacs(cnf_fh)
+if __name__ == "__main__":
+    args, forwarding_args = getPlanarParser().parse_known_args()
+    if forwarding_args:
+        print("WARNING: Unknown arguments for python script which are forwarded to SMS:", forwarding_args, file=stderr)
+    b = PlanarGraphBuilder(args.vertices, directed=args.directed, staticInitialPartition=args.static_partition, underlyingGraph=args.underlying_graph)
+    b.add_constraints_by_arguments(args)
+    if args.no_solve:
+        if args.cnf_file:
+            with open(args.cnf_file, "w") as cnf_fh:
+                b.print_dimacs(cnf_fh)
+        else:
+            print("REmember CNF file tag please")
     else:
-        print("REmember CNF file tag please")
-else:
-    b.solveArgs(args, forwarding_args)
+        b.solveArgs(args, forwarding_args)
