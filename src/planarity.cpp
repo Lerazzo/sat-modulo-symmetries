@@ -31,7 +31,7 @@ vector<pair<int, int>> deleteVerticesWithDegree1(vector<pair<int, int>> &edges)
         }
         else
         {
-            std::cout << "A vertex with degree one got removed :O" << edge.first << edge.second << std::endl;
+            //std::cout << "A vertex with degree one got removed :O" << edge.first << edge.second << std::endl;
             degreeCount[edge.first]--;
             degreeCount[edge.second]--;
         }
@@ -104,8 +104,8 @@ vector<pair<int, int>> testPlanarity(const adjacency_matrix_t &m, bool outerplan
     }
     else
     {
-        std::cout << "Input graph is not planar" << std::endl;
-        std::cout << "Edges in the Kuratowski subgraph: ";
+        //std::cout << "Input graph is not planar" << std::endl;
+        //std::cout << "Edges in the Kuratowski subgraph: ";
         vector<pair<int, int>> kurEdges;
         kuratowski_edges_t::iterator ki, ki_end;
         ki_end = kuratowski_edges.end();
@@ -137,13 +137,13 @@ vector<pair<int, int>> testPlanarity(const adjacency_matrix_t &m, bool outerplan
                     }
                 }
             }
-            std::cout << "REMOVE ME " << vertexToRemove << std::endl;
+            //std::cout << "REMOVE ME " << vertexToRemove << std::endl;
         }
         
 
         for (ki = kuratowski_edges.begin(); ki != ki_end; ++ki)
         {
-            std::cout << *ki << " ";
+            //std::cout << *ki << " ";
             if (outerplanarity) {
                 if (source(*ki, g) != vertexToRemove && target(*ki, g) != vertexToRemove) { //only add edge if not part of the extra special vertex
                     kurEdges.push_back(make_pair(source(*ki, g), target(*ki, g)));
@@ -153,7 +153,7 @@ vector<pair<int, int>> testPlanarity(const adjacency_matrix_t &m, bool outerplan
             }
             
         }
-        std::cout << std::endl;
+        //std::cout << std::endl;
         return deleteVerticesWithDegree1All(kurEdges);
     }
 }

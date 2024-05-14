@@ -403,6 +403,17 @@ class GraphEncodingBuilder(IDPool, list):
         if args.planar_kuratowski:
             self.paramsSMS["planar"] = 5  # DEFAULT planarity frequency
 
+        if args.outerplanar2:
+            print("Did you remember to make V one higher than it should be?")
+            self.paramsSMS["planar"] = 5 # enable DEFAULT planarity frequency
+
+            for u in range(self.n-1):
+                self.append([self.var_edge(u,self.n-1)])
+
+        if args.outerplanar:
+            self.paramsSMS["outerplanar"] = True 
+            self.paramsSMS["planar"] = 5
+
         if args.even_degrees:
             for u in self.V:
                 shouldBe([+self.var_edge(u, v) for v in self.V if v != u], [i for i in self.V if i % 2 == 0], self, self, type=DEFAULT_COUNTER)
@@ -448,17 +459,6 @@ class GraphEncodingBuilder(IDPool, list):
                                 self.append([self.var_edge(u, v)])
                         self.paramsSMS["fixed-subgraph-size"] = n
                         break
-
-        if args.outerplanar2:
-            print("Did you remember to make V one higher than it should be?")
-            if not args.planar_kuratowski:
-                print("DID YOU FORGET --planar?")
-
-            for u in range(self.n-1):
-                self.append([self.var_edge(u,self.n-1)])
-
-        if args.outerplanar:
-            self.paramsSMS["outerplanar"] = True  # DEFAULT planarity frequency
 
         if args.bcp:  # !!!!!!!! must be applied at the end
             print("Number of propagated literals:", self.bcp(), file=stderr)

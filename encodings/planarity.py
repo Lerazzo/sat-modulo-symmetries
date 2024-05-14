@@ -19,6 +19,9 @@ def planar_encoding_schnyder(V, var_edge, vpool, constraints, outerplanar=False,
     for v in all_variables:
         all_variables_index[v] = vpool.id()
 
+    for v in all_variables:
+        print(v, all_variables_index[v])
+
     def var(L):
         return all_variables_index[L]
 
@@ -57,16 +60,17 @@ def planar_encoding_schnyder(V, var_edge, vpool, constraints, outerplanar=False,
         print("c\tplanarity criterion")
     # definition 1.1 from http://page.math.tu-berlin.de/~felsner/Paper/ppg-rev.pdf
 
-    if not outerplanar:
-        for u, v in combinations(V, 2):
-            for w in set(V) - {u, v}:
-                constraints.append([-var_edge(u, v)] + [var_uv_smaller_w_i(u, v, w, i) for i in range(3)])  # in upper triangle
-                constraints.append([-var_edge(v, u)] + [var_uv_smaller_w_i(u, v, w, i) for i in range(3)])  # in lower triangle
-    else: 
-        for u, v in combinations(V, 2):
-            for w in set(V) - {u, v}:
-                constraints.append([-var_edge(u, v)] + [var_uv_smaller_w_i(u, v, w, i) for i in range(2)])  # in upper triangle
-                constraints.append([-var_edge(v, u)] + [var_uv_smaller_w_i(u, v, w, i) for i in range(2)])  # in lower triangle
+    
+    for u, v in combinations(V, 2):
+        for w in set(V) - {u, v}:
+            constraints.append([-var_edge(u, v)] + [var_uv_smaller_w_i(u, v, w, i) for i in range(3)])  # in upper triangle
+            constraints.append([-var_edge(v, u)] + [var_uv_smaller_w_i(u, v, w, i) for i in range(3)])  # in lower triangle
+
+    if outerplanar:
+        for u, v in permutations(V,2):
+            constraints.append([+var_u_smaller_v_i(u,v,1), +var_u_smaller_v_i(u,v,2)])
+            constraints.append([-var_u_smaller_v_i(u,v,1), -var_u_smaller_v_i(u,v,2)])
+        
 
 
 def planarity_universal(V, var_edge, vpool, constraints):
@@ -267,8 +271,9 @@ class PlanarGraphBuilder(GraphEncodingBuilder):
             self.paramsSMS["initial-partition"] = " ".join(map(str, map(len, partition)))
 
 
-args = getPlanarParser().parse_args()
-print(args)
+args, forwarding_args = getPlanarParser().parse_known_args()
+if forwarding_args:
+    print("WARNING: Unknown arguments for python script which are forwarded to SMS:", forwarding_args, file=stderr)
 b = PlanarGraphBuilder(args.vertices, directed=args.directed, staticInitialPartition=args.static_partition, underlyingGraph=args.underlying_graph)
 b.add_constraints_by_arguments(args)
 if args.no_solve:
@@ -278,4 +283,4 @@ if args.no_solve:
     else:
         print("REmember CNF file tag please")
 else:
-    b.solveArgs(args, [])
+    b.solveArgs(args, forwarding_args)
