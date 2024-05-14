@@ -8,7 +8,7 @@ from pysms.graph_builder import *
 
 
 # planarity encodings
-def planar_encoding_schnyder(V, var_edge, vpool, constraints, DEBUG=False):
+def planar_encoding_schnyder(V, var_edge, vpool, constraints, outerplanar=False, DEBUG=False):
     D = range(3)
     all_variables = []
     all_variables += [("u_smaller_v_i", (u, v, i)) for i in D for u, v in permutations(V, 2)]  # u < v in i-th linear u_smaller_v_i
@@ -56,10 +56,17 @@ def planar_encoding_schnyder(V, var_edge, vpool, constraints, DEBUG=False):
     if DEBUG:
         print("c\tplanarity criterion")
     # definition 1.1 from http://page.math.tu-berlin.de/~felsner/Paper/ppg-rev.pdf
-    for u, v in combinations(V, 2):
-        for w in set(V) - {u, v}:
-            constraints.append([-var_edge(u, v)] + [var_uv_smaller_w_i(u, v, w, i) for i in range(3)])  # in upper triangle
-            constraints.append([-var_edge(v, u)] + [var_uv_smaller_w_i(u, v, w, i) for i in range(3)])  # in lower triangle
+
+    if not outerplanar:
+        for u, v in combinations(V, 2):
+            for w in set(V) - {u, v}:
+                constraints.append([-var_edge(u, v)] + [var_uv_smaller_w_i(u, v, w, i) for i in range(3)])  # in upper triangle
+                constraints.append([-var_edge(v, u)] + [var_uv_smaller_w_i(u, v, w, i) for i in range(3)])  # in lower triangle
+    else: 
+        for u, v in combinations(V, 2):
+            for w in set(V) - {u, v}:
+                constraints.append([-var_edge(u, v)] + [var_uv_smaller_w_i(u, v, w, i) for i in range(2)])  # in upper triangle
+                constraints.append([-var_edge(v, u)] + [var_uv_smaller_w_i(u, v, w, i) for i in range(2)])  # in lower triangle
 
 
 def planarity_universal(V, var_edge, vpool, constraints):
@@ -130,6 +137,9 @@ def planarity_universal(V, var_edge, vpool, constraints):
 
 def getPlanarParser():
     parser = getDefaultParser()
+
+    parser.add_argument("--outerplanar_schnyder", "--ops", action="store_true", help="Outerplanarity testing based on Schnyder orderings 2|3")
+
     parser.add_argument("--planar_schnyder", "--ps", action="store_true", help="Planarity testing based on Schnyder orderings")
     parser.add_argument("--planar_universal", "--pu", action="store_true", help="Planarity testing based on universal point sets")
     parser.add_argument("--earthmoon", type=int, help="Criteria related to earth moon with given chromatic number; doesn't check thickness 2")
@@ -147,6 +157,9 @@ class PlanarGraphBuilder(GraphEncodingBuilder):
 
         if args.planar_schnyder:
             planar_encoding_schnyder(self.V, self.var_edge, self, self)
+
+        if args.outerplanar_schnyder:
+            planar_encoding_schnyder(self.V, self.var_edge, self, self, True)
 
         if args.planar_universal:
             planarity_universal(self.V, self.var_edge, self, self)
@@ -255,6 +268,14 @@ class PlanarGraphBuilder(GraphEncodingBuilder):
 
 
 args = getPlanarParser().parse_args()
+print(args)
 b = PlanarGraphBuilder(args.vertices, directed=args.directed, staticInitialPartition=args.static_partition, underlyingGraph=args.underlying_graph)
 b.add_constraints_by_arguments(args)
-b.solveArgs(args)
+if args.no_solve:
+    if args.cnf_file:
+        with open(args.cnf_file, "w") as cnf_fh:
+            b.print_dimacs(cnf_fh)
+    else:
+        print("REmember CNF file tag please")
+else:
+    b.solveArgs(args, [])
