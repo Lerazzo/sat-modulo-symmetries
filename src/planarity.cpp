@@ -52,7 +52,7 @@ vector<pair<int, int>> deleteVerticesWithDegree1All(vector<pair<int, int>> edges
 }
 
 // returns a K_5 or K_{3,3} subgraph if not planar, otherwise empty list
-vector<pair<int, int>> testPlanarity(const adjacency_matrix_t &m, bool outerplanarity)
+vector<pair<int, int>> testPlanarity(const adjacency_matrix_t &m)
 {
     int n = (int)m.size(); // vertices is already used in the boost namespace
     using namespace boost;
@@ -64,10 +64,65 @@ vector<pair<int, int>> testPlanarity(const adjacency_matrix_t &m, bool outerplan
         graph;
     
     // Create graph in format suitable for boost
-    int gsize = n;
 
-    if (outerplanarity)
-        gsize = n + 1;
+    graph g(n);
+        for (int i = 0; i < n; i++)
+            for (int j = i + 1; j < n; j++)
+                if (m[i][j] == truth_value_true) {
+                    add_edge(i, j, g);
+                }    
+
+    // Initialize the interior edge index
+    property_map<graph, edge_index_t>::type e_index = get(edge_index, g);
+    graph_traits<graph>::edges_size_type edge_count = 0;
+    graph_traits<graph>::edge_iterator ei, ei_end;
+    for (boost::tie(ei, ei_end) = boost::edges(g); ei != ei_end; ++ei)
+        put(e_index, *ei, edge_count++);
+
+    // Test for planarity
+    typedef std::vector<graph_traits<graph>::edge_descriptor>
+        kuratowski_edges_t;
+    kuratowski_edges_t kuratowski_edges;
+    if (boyer_myrvold_planarity_test(boyer_myrvold_params::graph = g,
+                                     boyer_myrvold_params::kuratowski_subgraph =
+                                         std::back_inserter(kuratowski_edges)))
+    {
+        // std::cout << "Input graph is planar" << std::endl;
+        return vector<pair<int, int>>();
+    }
+    else
+    {
+        //std::cout << "Input graph is not planar" << std::endl;
+        //std::cout << "Edges in the Kuratowski subgraph: ";
+        vector<pair<int, int>> kurEdges;
+        kuratowski_edges_t::iterator ki, ki_end;
+        ki_end = kuratowski_edges.end();
+
+        std::map<int, int> vDegreeMap;
+        int vertexToRemove;        
+
+        for (ki = kuratowski_edges.begin(); ki != ki_end; ++ki)
+        {
+            kurEdges.push_back(make_pair(source(*ki, g), target(*ki, g)));            
+        }
+        //std::cout << std::endl;
+        return deleteVerticesWithDegree1All(kurEdges);
+    }
+}
+
+// returns a K_5 or K_{3,3} subgraph if not planar, otherwise empty list
+vector<pair<int, int>> testOuterplanarity(const adjacency_matrix_t &m) {
+    int n = (int)m.size(); // vertices is already used in the boost namespace
+    using namespace boost;
+    typedef adjacency_list<vecS,
+                           vecS,
+                           undirectedS,
+                           property<vertex_index_t, int>,
+                           property<edge_index_t, int>>
+        graph;
+    
+    // Create graph in format suitable for boost
+    int gsize = n + 1;
 
     graph g(gsize);
         for (int i = 0; i < n; i++)
@@ -75,12 +130,8 @@ vector<pair<int, int>> testPlanarity(const adjacency_matrix_t &m, bool outerplan
                 if (m[i][j] == truth_value_true) {
                     add_edge(i, j, g);
                 }
-                    
-    if (outerplanarity) {
-        for (int i = 0; i < n; i++) {
-            add_edge(i, n, g); // add edges that connect to an extra, special vertex
-        }
-            
+    for (int i = 0; i < n; i++) {
+        add_edge(i, n, g); // add edges that connect to an extra, special vertex
     }
     
 
@@ -109,50 +160,43 @@ vector<pair<int, int>> testPlanarity(const adjacency_matrix_t &m, bool outerplan
         vector<pair<int, int>> kurEdges;
         kuratowski_edges_t::iterator ki, ki_end;
         ki_end = kuratowski_edges.end();
-        
-        
 
-        std::map<int, int> vDegreeMap;
         int vertexToRemove;
 
         // if outerplanar, remove vertex from the kuratowski subgraph to get K2,3 or K4 subgraph.
         // prioritize removing the newly created special vertex, as that is not part of the graph.
 
-        if (outerplanarity) {
-            for (ki = kuratowski_edges.begin(); ki != ki_end; ++ki) {
-                if (source(*ki, g) == n || target(*ki, g) == n) {
-                    vertexToRemove = n;
+        for (ki = kuratowski_edges.begin(); ki != ki_end; ++ki) {
+            if (source(*ki, g) == n || target(*ki, g) == n) {
+                vertexToRemove = n;
+                break;
+            }
+        }
+
+        // if n was not selected, remove vertex with degree over 3
+        if (vertexToRemove != n) {
+            std::map<int, int> vDegreeMap;
+            for (ki = kuratowski_edges.begin(); ki != ki_end; ++ki) { 
+                vDegreeMap[source(*ki, g)]++;
+                if (vDegreeMap[source(*ki, g)]>=3) {
+                    vertexToRemove = source(*ki, g);
                     break;
                 }
-                vDegreeMap[source(*ki, g)]++;
                 vDegreeMap[target(*ki, g)]++;
-            }
-
-            // if n was not selected
-            if (vertexToRemove != n) {
-                for (int i = 0; i < n+1 ; ++i) {
-                    if (vDegreeMap[i] >= 3) {
-                        vertexToRemove = i;
-                        break;
-                    }
+                if (vDegreeMap[target(*ki, g)]>=3) {
+                    vertexToRemove = target(*ki, g);
+                    break;
                 }
             }
-            //std::cout << "REMOVE ME " << vertexToRemove << std::endl;
         }
         
 
-        for (ki = kuratowski_edges.begin(); ki != ki_end; ++ki)
-        {
-            //std::cout << *ki << " ";
-            if (outerplanarity) {
-                if (source(*ki, g) != vertexToRemove && target(*ki, g) != vertexToRemove) { //only add edge if not part of the extra special vertex
-                    kurEdges.push_back(make_pair(source(*ki, g), target(*ki, g)));
-                }
-            } else {
-                kurEdges.push_back(make_pair(source(*ki, g), target(*ki, g)));
-            }
-            
+    for (ki = kuratowski_edges.begin(); ki != ki_end; ++ki) {
+        if (source(*ki, g) != vertexToRemove && target(*ki, g) != vertexToRemove) { //only add edge if not part of the extra special vertex
+            kurEdges.push_back(make_pair(source(*ki, g), target(*ki, g)));
         }
+            
+    }
         //std::cout << std::endl;
         return deleteVerticesWithDegree1All(kurEdges);
     }
@@ -162,7 +206,21 @@ vector<pair<int, int>> testPlanarity(const adjacency_matrix_t &m, bool outerplan
 void PlanarityChecker::checkProperty(const adjacency_matrix_t &matrix)
 {
     // printf("Check planarity\n");
-    auto edges = testPlanarity(matrix, outerplanarity);
+    auto edges = testPlanarity(matrix);
+    if (!edges.empty())
+    {
+        forbidden_graph_t forbiddenGraph;
+        for (auto e : edges){
+            forbiddenGraph.push_back(make_pair(truth_value_true, e));}
+        throw forbiddenGraph;
+    }
+}
+
+// ensure that graph is planar
+void OuterplanarityChecker::checkProperty(const adjacency_matrix_t &matrix)
+{
+    // printf("Check planarity\n");
+    auto edges = testOuterplanarity(matrix);
     if (!edges.empty())
     {
         forbidden_graph_t forbiddenGraph;
@@ -185,7 +243,7 @@ void DirectedPlanarityChecker::checkProperty(const adjacency_matrix_t &m)
                 underlyingMatrix[j][i] = underlyingMatrix[i][j] = truth_value_true;
         }
 
-    auto edges = testPlanarity(underlyingMatrix, outerplanarity);
+    auto edges = testPlanarity(underlyingMatrix);
     if (!edges.empty())
     {
         forbidden_graph_t forbiddenGraph;
@@ -210,7 +268,7 @@ void ThicknessTwoChecker::checkProperty(const adjacency_matrix_t &m)
             if (m[i][j] == truth_value_true && m[j][i] == truth_value_true)
                 m1[i][j] = m1[j][i] = truth_value_true;
 
-    auto edges = testPlanarity(m1, false);
+    auto edges = testPlanarity(m1);
     if (!edges.empty())
     {
         forbidden_graph_t forbiddenGraph;
@@ -228,7 +286,7 @@ void ThicknessTwoChecker::checkProperty(const adjacency_matrix_t &m)
         for (int j = i + 1; j < vertices; j++)
             if (m[j][i] == truth_value_true && m[i][j] == truth_value_false) // only adjacent on lower side
                 m2[i][j] = m2[j][i] = truth_value_true;
-    edges = testPlanarity(m2, false);
+    edges = testPlanarity(m2);
     if (!edges.empty())
     {
         forbidden_graph_t forbiddenGraph;
@@ -245,7 +303,7 @@ void ThicknessTwoCheckerMulti::checkProperty(const vector<adjacency_matrix_t> &m
 {
     auto m1 = matrices[1];
 
-    auto edges = testPlanarity(m1, false);
+    auto edges = testPlanarity(m1);
     if (!edges.empty())
     {
         // printf("[");
@@ -260,7 +318,7 @@ void ThicknessTwoCheckerMulti::checkProperty(const vector<adjacency_matrix_t> &m
     }
 
     auto m2 = matrices[2];
-    edges = testPlanarity(m2, false);
+    edges = testPlanarity(m2);
     if (!edges.empty())
     {
         // printf("[");

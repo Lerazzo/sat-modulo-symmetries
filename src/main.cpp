@@ -511,12 +511,16 @@ int main(int argc, char const **argv)
 #ifndef DIRECTED
     if (planarityFrequency)
     {
-        solver->addPartiallyDefinedGraphChecker(new PlanarityChecker(planarityFrequency,outerplanarity));
+        solver->addPartiallyDefinedGraphChecker(new PlanarityChecker(planarityFrequency));
+    }
+    if (outerplanarity)
+    {
+        solver->addPartiallyDefinedGraphChecker(new OuterplanarityChecker(5));
     }
 #else
     if (planarityFrequency)
     {
-        solver->addPartiallyDefinedGraphChecker(new DirectedPlanarityChecker(planarityFrequency,outerplanarity));
+        solver->addPartiallyDefinedGraphChecker(new DirectedPlanarityChecker(planarityFrequency));
     }
 #endif
     if (thickness2Frequency)

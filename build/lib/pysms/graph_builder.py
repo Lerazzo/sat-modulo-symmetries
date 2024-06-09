@@ -403,6 +403,17 @@ class GraphEncodingBuilder(IDPool, list):
         if args.planar_kuratowski:
             self.paramsSMS["planar"] = 5  # DEFAULT planarity frequency
 
+        if args.outerplanar2:
+            print("Did you remember to make V one higher than it should be?")
+            self.paramsSMS["planar"] = 5 # enable DEFAULT planarity frequency
+
+            for u in range(self.n-1):
+                self.append([self.var_edge(u,self.n-1)])
+
+        if args.outerplanar:
+            self.paramsSMS["outerplanar"] = True 
+            self.paramsSMS["planar"] = 5
+
         if args.even_degrees:
             for u in self.V:
                 shouldBe([+self.var_edge(u, v) for v in self.V if v != u], [i for i in self.V if i % 2 == 0], self, self, type=DEFAULT_COUNTER)
@@ -449,21 +460,13 @@ class GraphEncodingBuilder(IDPool, list):
                         self.paramsSMS["fixed-subgraph-size"] = n
                         break
 
-        if args.outerplanar2:
-            print("Did you remember to make V one higher than it should be?")
-            if not args.planar_kuratowski:
-                print("DID YOU FORGET --planar?")
-
-            for u in range(self.n-1):
-                self.append([self.var_edge(u,self.n-1)])
-
-        if args.outerplanar:
-            self.paramsSMS["outerplanar"] = True  # DEFAULT planarity frequency
-
         if args.bcp:  # !!!!!!!! must be applied at the end
             print("Number of propagated literals:", self.bcp(), file=stderr)
 
     # ------------degree encodings--------------
+
+    def funTest(self):
+        print("Dinky")
 
     def minDegree(self, delta, countertype=DEFAULT_COUNTER) -> list[list[int]]:
         """Minimum degree at least delta
@@ -481,6 +484,7 @@ class GraphEncodingBuilder(IDPool, list):
         :param countertype: specify a cardinality encoding. Default value = DEFAULT_COUNTER
 
         """
+        print("dinky")
         return self.degreeBounds(self.V, None, delta, encoding=countertype)
 
     def degreeBounds(self, verts, lower, upper, within=False, encoding=DEFAULT_COUNTER) -> list[list[int]]:

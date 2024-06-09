@@ -7,11 +7,22 @@
 class PlanarityChecker : public PartiallyDefinedGraphChecker
 {
 public:
-    PlanarityChecker(int frequency, bool outerplanarity)
+    PlanarityChecker(int frequency)
     {
         this->name = "PlanarityChecker";
         this->frequency = frequency;
-        this->outerplanarity = outerplanarity;
+    }
+    void checkProperty(const adjacency_matrix_t &matrix);
+};
+
+// ensure that graph is outerplanarplanar
+class OuterplanarityChecker : public PartiallyDefinedGraphChecker
+{
+public:
+    OuterplanarityChecker(int frequency)
+    {
+        this->name = "OuterplanarityChecker";
+        this->frequency = frequency;
     }
     void checkProperty(const adjacency_matrix_t &matrix);
 };
@@ -20,11 +31,10 @@ public:
 class DirectedPlanarityChecker : public PartiallyDefinedGraphChecker
 {
 public:
-    DirectedPlanarityChecker(int frequency, bool outerplanarity)
+    DirectedPlanarityChecker(int frequency)
     {
         this->name = "DirectedPlanarityChecker";
         this->frequency = frequency;
-        this->outerplanarity = outerplanarity;
     }
     void checkProperty(const adjacency_matrix_t &matrix);
 };
