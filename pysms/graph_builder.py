@@ -87,6 +87,10 @@ def getDefaultParser():
     constraint_args.add_argument("--outerplanar2", action="store_true", help="ensure that graph is outerplanar")
     constraint_args.add_argument("--outerplanar", action="store_true", help="check outerplanarity instead of planarity")
 
+    constraint_args.add_argument("--outerplanar_schnyder", "--ops", action="store_true", help="Outerplanarity testing based on Schnyder orderings 2|3")
+
+
+
     return parser
 
 
@@ -411,8 +415,10 @@ class GraphEncodingBuilder(IDPool, list):
                 self.append([self.var_edge(u,self.n-1)])
 
         if args.outerplanar:
-            self.paramsSMS["outerplanar"] = True 
-            self.paramsSMS["planar"] = 5
+            self.paramsSMS["outerplanar"] = True
+
+        if args.outerplanar_schnyder:
+            self.planar_encoding_schnyder(self.V, self.var_edge, self, self, True, False)
 
         if args.even_degrees:
             for u in self.V:
@@ -465,9 +471,6 @@ class GraphEncodingBuilder(IDPool, list):
 
     # ------------degree encodings--------------
 
-    def funTest(self):
-        print("Dinky")
-
     def minDegree(self, delta, countertype=DEFAULT_COUNTER) -> list[list[int]]:
         """Minimum degree at least delta
 
@@ -484,7 +487,6 @@ class GraphEncodingBuilder(IDPool, list):
         :param countertype: specify a cardinality encoding. Default value = DEFAULT_COUNTER
 
         """
-        print("dinky")
         return self.degreeBounds(self.V, None, delta, encoding=countertype)
 
     def degreeBounds(self, verts, lower, upper, within=False, encoding=DEFAULT_COUNTER) -> list[list[int]]:
@@ -588,11 +590,11 @@ class GraphEncodingBuilder(IDPool, list):
         V = self.V
         var_edge = self.var_edge
         reachable = {
-            (v, t, I): self.id() for k in range(args.connectivity_low) for I in combinations(sorted(set(V)), k) for v in set(V) - {min(set(V) - set(I))} - set(I) for t in V
+            (v, t, I): self.id() for k in range(connectivity_low) for I in combinations(sorted(set(V)), k) for v in set(V) - {min(set(V) - set(I))} - set(I) for t in V
         }  # u can reach v without I in t steps
         reachable_via = {
             (v, w, t, I): self.id()
-            for k in range(args.connectivity_low)
+            for k in range(connectivity_low)
             for I in combinations(sorted(set(V)), k)
             for v in set(V) - {min(set(V) - set(I))} - set(I)
             for t in V
@@ -605,7 +607,7 @@ class GraphEncodingBuilder(IDPool, list):
         def var_reachable_via(v, w, t, I):
             return reachable_via[(v, w, t, I)]
 
-        for k in range(args.connectivity_low):
+        for k in range(connectivity_low):
             for I in combinations(sorted(set(V)), k):  # remove I and check if still connected
                 u = min(set(V) - set(I))
                 for v in set(V) - {u} - set(I):
@@ -672,6 +674,70 @@ class GraphEncodingBuilder(IDPool, list):
         g = self
         for S in combinations(g.V, x + 1):
             g.append([+g.var_edge(i, j) for i, j in combinations(S, 2)])
+
+    def planar_encoding_schnyder(self, V, var_edge, vpool, constraints, outerplanar=False, DEBUG=False):
+        D = range(3)
+        all_variables = []
+        all_variables += [("u_smaller_v_i", (u, v, i)) for i in D for u, v in permutations(V, 2)]  # u < v in i-th linear u_smaller_v_i
+        all_variables += [("uv_smaller_w_i", (u, v, w, i)) for i in D for u, v, w in permutations(V, 3)]  # u < w and v < w in i-th linear u_smaller_v_i
+
+        all_variables_index = {}
+
+        for v in all_variables:
+            all_variables_index[v] = self.id()
+
+        def var(L):
+            return all_variables_index[L]
+
+        def var_u_smaller_v_i(*L):
+            return var(("u_smaller_v_i", L))
+
+        def var_uv_smaller_w_i(*L):
+            return var(("uv_smaller_w_i", L))
+
+        if DEBUG:
+            print("c\tdefine linear orders")
+        rangei = 3
+        if outerplanar: rangei = 2
+
+        for i in range(rangei): # should be 2 if outerplanar?
+            # anti-symmetrie + connexity
+            for u, v in permutations(V, 2):
+                self.append([+var_u_smaller_v_i(u, v, i), +var_u_smaller_v_i(v, u, i)])
+                self.append([-var_u_smaller_v_i(u, v, i), -var_u_smaller_v_i(v, u, i)])
+
+            # transitivity
+            for u, v, w in permutations(V, 3):
+                self.append([-var_u_smaller_v_i(u, v, i), -var_u_smaller_v_i(v, w, i), +var_u_smaller_v_i(u, w, i)])
+
+        if DEBUG:
+            print("c\tassert uv_smaller_w_i variable")
+        for i in range(3):
+            for u, v, w in permutations(V, 3):
+                if u < v:
+                    self.append([-var_uv_smaller_w_i(u, v, w, i), +var_u_smaller_v_i(u, w, i)])
+                    self.append([-var_uv_smaller_w_i(u, v, w, i), +var_u_smaller_v_i(v, w, i)])
+                    self.append([+var_uv_smaller_w_i(u, v, w, i), -var_u_smaller_v_i(u, w, i), -var_u_smaller_v_i(v, w, i)])
+
+        # if DEBUG: print("c\tantichain")
+        for u, v in permutations(V, 2):
+            self.append([+var_u_smaller_v_i(u, v, i) for i in D])
+
+        if DEBUG:
+            print("c\tplanarity criterion")
+        # definition 1.1 from http://page.math.tu-berlin.de/~felsner/Paper/ppg-rev.pdf
+
+
+        for u, v in combinations(V, 2):
+            for w in set(V) - {u, v}:
+                self.append([-var_edge(u, v)] + [var_uv_smaller_w_i(u, v, w, i) for i in range(3)])  # in upper triangle
+                self.append([-var_edge(v, u)] + [var_uv_smaller_w_i(u, v, w, i) for i in range(3)])  # in lower triangle
+
+        if outerplanar:
+            for u, v in permutations(V,2):
+                self.append([+var_u_smaller_v_i(u,v,1), +var_u_smaller_v_i(u,v,2)])
+                self.append([-var_u_smaller_v_i(u,v,1), -var_u_smaller_v_i(u,v,2)])
+        
 
     def maxClique(self, x) -> None:
         """No cliques of size greater than x
@@ -1090,7 +1156,7 @@ if __name__ == "__main__":
     args, forwarding_args = getDefaultParser().parse_known_args()
     if forwarding_args:
         print("WARNING: Unknown arguments for python script which are forwarded to SMS:", forwarding_args, file=stderr)
-    b = GraphEncodingBuilder(args.vertices, directed=args.directed, multiGraph=args.multigraph, staticInitialPartition=args.static_partition, underlyingGraph=args.underlying_graph, DEBUG=args.DEBUG)
+    b = GraphEncodingBuilder(args.vertices, directed=args.directed, multiGraph=args.multigraph, staticInitialPartition=args.static_partition, underlyingGraph=args.underlying_graph, DEBUG=0)
     b.add_constraints_by_arguments(args)
     if args.no_solve:
         if args.cnf_file:

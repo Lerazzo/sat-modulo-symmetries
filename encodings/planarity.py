@@ -1,3 +1,6 @@
+import importlib
+
+
 from pysms.graph_builder import *
 
 """
@@ -141,7 +144,7 @@ def planarity_universal(V, var_edge, vpool, constraints):
 
 def getPlanarParser():
     parser = getDefaultParser()
-
+    
     parser.add_argument("--outerplanar_schnyder", "--ops", action="store_true", help="Outerplanarity testing based on Schnyder orderings 2|3")
 
     parser.add_argument("--planar_schnyder", "--ps", action="store_true", help="Planarity testing based on Schnyder orderings")
@@ -157,12 +160,14 @@ class PlanarGraphBuilder(GraphEncodingBuilder):
         super().__init__(n, directed, staticInitialPartition, underlyingGraph)
 
     def add_constraints_by_arguments(self, args):
+        print("____________________________")
         super().add_constraints_by_arguments(args)
 
         if args.planar_schnyder:
             planar_encoding_schnyder(self.V, self.var_edge, self, self)
 
         if args.outerplanar_schnyder:
+            print("YIPPEEE")
             planar_encoding_schnyder(self.V, self.var_edge, self, self, True)
 
         if args.planar_universal:
