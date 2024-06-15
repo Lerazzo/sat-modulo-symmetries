@@ -110,7 +110,7 @@ vector<pair<int, int>> testPlanarity(const adjacency_matrix_t &m)
     }
 }
 
-// returns a K_5 or K_{3,3} subgraph if not planar, otherwise empty list
+// returns a K_4 or K_{2,3} subgraph if not outerplanar, otherwise empty list
 vector<pair<int, int>> testOuterplanarity(const adjacency_matrix_t &m) {
     int n = (int)m.size(); // vertices is already used in the boost namespace
     using namespace boost;
