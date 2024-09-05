@@ -1,5 +1,5 @@
 from planarity import PlanarGraphBuilder, planar_encoding_schnyder
-from pysms.graph_builder2 import GraphEncodingBuilder
+from pysms.graph_builder import GraphEncodingBuilder
 
 
 # k = 0

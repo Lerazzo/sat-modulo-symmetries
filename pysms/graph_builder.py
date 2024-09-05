@@ -89,6 +89,7 @@ def getDefaultParser():
 
     constraint_args.add_argument("--outerplanar_schnyder", "--ops", action="store_true", help="Outerplanarity testing based on Schnyder orderings 2|3")
 
+    constraint_args.add_argument("--halintree",type=int,help="generate the inner tree of a Halin graph")
 
 
     return parser
@@ -420,6 +421,21 @@ class GraphEncodingBuilder(IDPool, list):
         if args.outerplanar_schnyder:
             self.planar_encoding_schnyder(self.V, self.var_edge, self, self, True, False)
 
+        if args.halintree:
+            k = args.halintree
+            self.paramsSMS["planar"] = 5
+            self.ckFree(3)
+            self.ckFree(4)
+            self.ckFree(5)
+            self.ckFree(6)
+            self.minConnectivity(1)
+            #insert ck-free?
+            self.halintree(k)
+            #for i in range(k):
+            #self.ckFree(2)
+            
+
+
         if args.even_degrees:
             for u in self.V:
                 shouldBe([+self.var_edge(u, v) for v in self.V if v != u], [i for i in self.V if i % 2 == 0], self, self, type=DEFAULT_COUNTER)
@@ -737,7 +753,16 @@ class GraphEncodingBuilder(IDPool, list):
             for u, v in permutations(V,2):
                 self.append([+var_u_smaller_v_i(u,v,1), +var_u_smaller_v_i(u,v,2)])
                 self.append([-var_u_smaller_v_i(u,v,1), -var_u_smaller_v_i(u,v,2)])
-        
+    
+    def halintree(self, k):
+        g = self
+        V = g.V
+
+        for u,v in combinations(V[0:k],2):
+            self.append([-self.var_edge(u,v)])
+
+
+        print("halin tree stuff", k)
 
     def maxClique(self, x) -> None:
         """No cliques of size greater than x
