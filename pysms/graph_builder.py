@@ -423,8 +423,10 @@ class GraphEncodingBuilder(IDPool, list):
 
         if args.halintree:
             k = args.halintree
-            self.paramsSMS["planar"] = 5
+            #planarity test does not do anything and wastes runtime
+            #self.paramsSMS["planar"] = 5
 
+            #is it neccessary for this much ckfree?
             for i in range(3,len(self.V)):
                 self.ckFree(i)
             self.minConnectivity(1)
@@ -758,14 +760,22 @@ class GraphEncodingBuilder(IDPool, list):
         for u,v in combinations(V[0:k],2):
             self.append([-self.var_edge(u,v)])
 
-        #there can only be 1 edge to the trees. Already handled by Ck-free...
-        #for u,v in V[0:k]:
+        #there can only be 1 edge for an outer cycle vertex to the tree.
+        #each outer cycle vertex must have one edge missing for all edgepairs
+        for u in V[0:k]:
+            for v, x in combinations(V[k:len(V)],2):
+                self.append([-self.var_edge(u,v), -self.var_edge(u,x)])
 
         #there cannot be exactly two edges for vertices in the inner tree
+        #e(u,v) => (e(u,v2) OR e(u,v3) OR e(u,v4) ...) in CNF
         #(e(u,v) AND e(u,x)) => (e(u,v3) OR e(u,v4) OR e(u,v5) ..) in CNF
         for u in V[k:len(V)]:
             other_vertices = V.copy()
             other_vertices.remove(u)
+            for v in other_vertices:
+                remaining_vertices = other_vertices.copy()
+                remaining_vertices.remove(v)
+                self.append([-self.var_edge(u,v)]+[self.var_edge(u,i) for i in remaining_vertices])
             for v, x in combinations(other_vertices,2):
                 remaining_vertices = other_vertices.copy()
                 remaining_vertices.remove(v)
