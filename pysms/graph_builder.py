@@ -424,15 +424,11 @@ class GraphEncodingBuilder(IDPool, list):
         if args.halintree:
             k = args.halintree
             self.paramsSMS["planar"] = 5
-            self.ckFree(3)
-            self.ckFree(4)
-            self.ckFree(5)
-            self.ckFree(6)
+
+            for i in range(3,len(self.V)):
+                self.ckFree(i)
             self.minConnectivity(1)
-            #insert ck-free?
             self.halintree(k)
-            #for i in range(k):
-            #self.ckFree(2)
             
 
 
@@ -758,8 +754,28 @@ class GraphEncodingBuilder(IDPool, list):
         g = self
         V = g.V
 
+        #there cannot be edges between the outer cycle. Should this be both sides?
         for u,v in combinations(V[0:k],2):
             self.append([-self.var_edge(u,v)])
+
+        #there can only be 1 edge to the trees. Already handled by Ck-free...
+        #for u,v in V[0:k]:
+
+        #there cannot be exactly two edges for vertices in the inner tree
+        #(e(u,v) AND e(u,x)) => (e(u,v3) OR e(u,v4) OR e(u,v5) ..) in CNF
+        for u in V[k:len(V)]:
+            other_vertices = V.copy()
+            other_vertices.remove(u)
+            for v, x in combinations(other_vertices,2):
+                remaining_vertices = other_vertices.copy()
+                remaining_vertices.remove(v)
+                remaining_vertices.remove(x)
+                self.append([-self.var_edge(u,v),-self.var_edge(u,x)]+[self.var_edge(u,i) for i in remaining_vertices])
+        
+
+
+        #missing leaves must have 1 edge exactly
+        #missing that no vertex can have 2 edges exactly/tree leaves must have 3+ edges
 
 
         print("halin tree stuff", k)
