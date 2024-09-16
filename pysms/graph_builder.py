@@ -91,6 +91,8 @@ def getDefaultParser():
 
     constraint_args.add_argument("--halintree",type=int,help="generate the inner tree of a Halin graph")
 
+    constraint_args.add_argument("--halin", type=int, help="the generated graphs must be Halin graphs")
+
 
     return parser
 
@@ -431,6 +433,12 @@ class GraphEncodingBuilder(IDPool, list):
                 self.ckFree(i)
             self.minConnectivity(1)
             self.halintree(k)
+
+        if args.halin:
+            k = args.halin
+            self.paramsSMS["planar"] = 5
+            self.minConnectivity(3)
+            self.halin(k)
             
 
 
@@ -756,7 +764,7 @@ class GraphEncodingBuilder(IDPool, list):
         g = self
         V = g.V
 
-        #there cannot be edges between the outer cycle. Should this be both sides?
+        #there cannot be edges between the outer cycle.
         for u,v in combinations(V[0:k],2):
             self.append([-self.var_edge(u,v)])
 
@@ -766,7 +774,7 @@ class GraphEncodingBuilder(IDPool, list):
             for v, x in combinations(V[k:len(V)],2):
                 self.append([-self.var_edge(u,v), -self.var_edge(u,x)])
 
-        #there cannot be exactly two edges for vertices in the inner tree
+        #there cannot be exactly one or two edges for vertices in the inner tree
         #e(u,v) => (e(u,v2) OR e(u,v3) OR e(u,v4) ...) in CNF
         #(e(u,v) AND e(u,x)) => (e(u,v3) OR e(u,v4) OR e(u,v5) ..) in CNF
         for u in V[k:len(V)]:
@@ -781,15 +789,147 @@ class GraphEncodingBuilder(IDPool, list):
                 remaining_vertices.remove(v)
                 remaining_vertices.remove(x)
                 self.append([-self.var_edge(u,v),-self.var_edge(u,x)]+[self.var_edge(u,i) for i in remaining_vertices])
+
+    def halin(self, k):
+        g = self
+        V = g.V
+        n = len(V)
+
+        #OLD outer_cycle_vars = {}
+        inner_tree = {}
+
+        for u in V:
+            inner_tree[u] = self.id()
+
+        #outer circle must be connected
+        # for i in range(0,k-1):
+        #    self.append([self.var_edge(V[i],V[i+1])])
+        #    print(i,i+1)
+        # self.append([self.var_edge(V[k-1],V[0])])
+        # print(k-1,0)
+
+        #outer circle must have max two connections to each other
+        #technically not necessary?
+        for u in V:
+            other_vertices = V.copy()
+            other_vertices.remove(u)
+            for v,x,z in combinations(other_vertices,3):
+                self.append([-self.var_edge(u,v),-self.var_edge(u,x),-self.var_edge(u,z)]
+                            +[inner_tree[u],inner_tree[v],inner_tree[x],inner_tree[z]])
+        
+        #outer circle must be connected to maximum 1 tree vertex
+        for u in V:
+            other_vertices = V.copy()
+            other_vertices.remove(u)
+            for v, x in combinations(other_vertices,2):
+                self.append([-self.var_edge(u,v), -self.var_edge(u,x),-inner_tree[v],-inner_tree[x],inner_tree[u]])
+
+        #outer circle must be connected to minimum 1 tree vertex
+        for u in V:
+            other_vertices = V.copy()
+            other_vertices.remove(u)
+            self.append([self.CNF_AND((self.var_edge(u,v),inner_tree[v])) for v in other_vertices] + [inner_tree[u]])
+
+        #inner tree must have no cycles. (using ck-free technique)
+        for cycle_size in range(3,n):
+            for cycle in permutations(V, cycle_size):
+                if cycle[0] != min(cycle):
+                    continue
+                if cycle[1] > cycle[-1]:
+                    continue
+                self.append([-self.var_edge(cycle[i], cycle[(i + 1) % cycle_size]) for i in range(cycle_size)]+[-inner_tree[i] for i in range(cycle_size)]) # at least one edge absent from potential cycle
+
+        #tree must be connected...
+        reachable = {
+            (v, t, I): self.id() 
+            for I in V 
+            for v in set(V) - {min(set(V) - set([I]))} - set([I]) 
+            for t in V
+        }  # u can reach v without I in t steps
+        reachable_via = {
+            (v, w, t, I): self.id()
+            for I in V
+            for v in set(V) - {min(set(V) - set([I]))} - set([I])
+            for t in V
+            for w in set(V) - {min(set(V) - set([I])), v} - set([I])
+        }  # u can reach v via w without I in t steps
+
+        def var_reachable(v, t, I):
+            return reachable[(v, t, I)]
+
+        def var_reachable_via(v, w, t, I):
+            return reachable_via[(v, w, t, I)]
         
 
+        # MUST BE DEFINED FOR INNER TREE. WHAT IF U IS NOT IN THE INNER TREE???
+        # WHAT IF THE SYSTEM TRIES TO CHEAT AND GO AROUND?
+        # w MUST BE PART OF THE INNER TREE TOO YES?
+        for I in V:  # remove I and check if still connected
+            u = min(set(V) - set([I]))
+            for v in set(V) - {u} - set([I]):
+                for t in V:
+                    if t == 0:
+                        # reachable in first step if adjacent. If there is no edge, the reachable in 0 steps must be false and vice versa
+                        self.append([-self.var_edge(v, u), +var_reachable(v, 0, I)])
+                        self.append([+self.var_edge(v, u), -var_reachable(v, 0, I)])
+                    else:
+                        # if v is reachable in t steps without I...
+                        #   - then it must be reachable in t-1
+                        #   - or   it must be reachable via some w
+                        # if v is not reachable in t steps without I
+                        #   - then it must not be reachable in t-1 steps as well
+                        #   - then it must not be reachable via some w as well
+                        self.append([-var_reachable(v, t, I), +var_reachable(v, t - 1, I)] + [+var_reachable_via(v, w, t, I) for w in set(V) - set([I]) - {v, u}])
+                        self.append([+var_reachable(v, t, I), -var_reachable(v, t - 1, I)])
+                        for w in set(V) - set([I]) - {v, u}:
+                            self.append([+var_reachable(v, t, I), -var_reachable_via(v, w, t, I)])
+                            #either there is no edge between w and v OR v must be reachable via w OR w must be unreachable in t-1 steps
+                            self.append([+var_reachable_via(v, w, t, I), -var_reachable(w, t - 1, I), -self.var_edge(w, v)])
+                            #if w is unreachable in t-1 steps, v should be unreachable in t steps via w as well.
+                            self.append([-var_reachable_via(v, w, t, I), +var_reachable(w, t - 1, I)])
+                            #if there is no edge between w and v, v is unreachable via w in t steps
+                            self.append([-var_reachable_via(v, w, t, I), +self.var_edge(w, v)])
+                # must be reached
+                self.append([+var_reachable(v, max(V), I)])
 
-        #missing leaves must have 1 edge exactly
-        #missing that no vertex can have 2 edges exactly/tree leaves must have 3+ edges
+    def diameter2critical(self) -> None:
+        """Ensure that the graph has diameter two and removing any edge results in a graph with diameter > 2"""
+        g = self
+        V = g.V
+        var_edge = g.var_edge
+        commonNeighbor = {(i, j, k): g.id() for i, j in combinations(V, 2) for k in set(V) - {i, j}}
+
+        for i, j in combinations(V, 2):
+            for k in set(V) - {i, j}:
+                L = (i, j, k)
+                g.CNF_AND_APPEND([+var_edge(i, k), +var_edge(j, k)], commonNeighbor[L])
+
+        noCommonNeighbor = {(i, j): g.id() for i, j in combinations(V, 2)}
+        for i, j in combinations(V, 2):
+            for k in set(V) - {i, j}:
+                # if the have a common neighbor, noCommonNeighbor is false
+                g.append([-commonNeighbor[(i, j, k)], -noCommonNeighbor[(i, j)]])
+
+        for i, j in combinations(V, 2):
+            g.append([+var_edge(i, j)] + [+commonNeighbor[(i, j, k)] for k in set(V) - {i, j}])  # adjacent or common neighbor
+
+        for i, j in combinations(V, 2):
+            # ensure that critical i.e. if edge ij is present removing will lead to diamter > 2
+            clause = [-var_edge(i, j), +noCommonNeighbor[(i, j)]]
+            for k in set(V) - {i, j}:
+                for v1, v2 in [(i, j), (j, i)]:
+                    # v2 and k have diameter > after removing ij
+                    # v1 adjacent to k and v1 is the only common neighbor from v2 and k. And k not adjacent to v2
+                    diameterIncreasing = g.id()
+                    g.append([+var_edge(v1, k), -diameterIncreasing])
+                    g.append([-var_edge(v2, k), -diameterIncreasing])
+                    for l in set(V) - {i, j, k}:
+                        g.append([-commonNeighbor[(min(v2, k), max(v2, k), l)], -diameterIncreasing])
+                    clause.append(diameterIncreasing)
+            g.append(clause)
 
 
-        print("halin tree stuff", k)
-
+                
     def maxClique(self, x) -> None:
         """No cliques of size greater than x
 
