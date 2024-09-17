@@ -439,7 +439,6 @@ class GraphEncodingBuilder(IDPool, list):
             self.paramsSMS["planar"] = 5
             self.minConnectivity(3)
             self.halin(k)
-            
 
 
         if args.even_degrees:
@@ -795,27 +794,26 @@ class GraphEncodingBuilder(IDPool, list):
         V = g.V
         n = len(V)
 
-        #OLD outer_cycle_vars = {}
         inner_tree = {}
 
         for u in V:
             inner_tree[u] = self.id()
 
-        #outer circle must be connected
-        # for i in range(0,k-1):
-        #    self.append([self.var_edge(V[i],V[i+1])])
-        #    print(i,i+1)
-        # self.append([self.var_edge(V[k-1],V[0])])
-        # print(k-1,0)
+        # self.append([inner_tree[0]])
+        # self.append([-inner_tree[1]])
+        # self.append([-inner_tree[2]])
+        # self.append([-inner_tree[3]])
+        # self.append([inner_tree[4]])
+        # self.append([inner_tree[5]])
+        # self.append([inner_tree[6]])
 
         #outer circle must have max two connections to each other
-        #technically not necessary?
         for u in V:
             other_vertices = V.copy()
             other_vertices.remove(u)
             for v,x,z in combinations(other_vertices,3):
-                self.append([-self.var_edge(u,v),-self.var_edge(u,x),-self.var_edge(u,z)]
-                            +[inner_tree[u],inner_tree[v],inner_tree[x],inner_tree[z]])
+                self.append([-self.var_edge(u,v),-self.var_edge(u,x),-self.var_edge(u,z),
+                            inner_tree[u],inner_tree[v],inner_tree[x],inner_tree[z]])
         
         #outer circle must be connected to maximum 1 tree vertex
         for u in V:
@@ -825,6 +823,7 @@ class GraphEncodingBuilder(IDPool, list):
                 self.append([-self.var_edge(u,v), -self.var_edge(u,x),-inner_tree[v],-inner_tree[x],inner_tree[u]])
 
         #outer circle must be connected to minimum 1 tree vertex
+        #doesnt do much?
         for u in V:
             other_vertices = V.copy()
             other_vertices.remove(u)
@@ -837,60 +836,84 @@ class GraphEncodingBuilder(IDPool, list):
                     continue
                 if cycle[1] > cycle[-1]:
                     continue
-                self.append([-self.var_edge(cycle[i], cycle[(i + 1) % cycle_size]) for i in range(cycle_size)]+[-inner_tree[i] for i in range(cycle_size)]) # at least one edge absent from potential cycle
+                self.append([-self.var_edge(cycle[i], cycle[(i + 1) % cycle_size]) for i in range(cycle_size)]+[-inner_tree[cycle[i]] for i in range(cycle_size)]) # at least one edge absent from potential cycle
 
-        #tree must be connected...
-        reachable = {
-            (v, t, I): self.id() 
-            for I in V 
-            for v in set(V) - {min(set(V) - set([I]))} - set([I]) 
-            for t in V
-        }  # u can reach v without I in t steps
-        reachable_via = {
-            (v, w, t, I): self.id()
-            for I in V
-            for v in set(V) - {min(set(V) - set([I]))} - set([I])
-            for t in V
-            for w in set(V) - {min(set(V) - set([I])), v} - set([I])
-        }  # u can reach v via w without I in t steps
+        #outer cycle must exist
+        and_statements=[]
+        for cycle_size in range(3,n):
+            for cycle in permutations(V,cycle_size):
+                if cycle[0] != min(cycle):
+                    continue
+                if cycle[1] > cycle[-1]:
+                    continue
+                and_statements.append(self.CNF_AND([self.var_edge(cycle[i],cycle[(i+1)%cycle_size]) for i in range(cycle_size)]+[-inner_tree[cycle[i]] for i in range(cycle_size)]))
+        self.append([self.CNF_OR(and_statements)])
 
-        def var_reachable(v, t, I):
-            return reachable[(v, t, I)]
 
-        def var_reachable_via(v, w, t, I):
-            return reachable_via[(v, w, t, I)]
+        # outer cycle must be 1 connected to itself
+        # reachable = {
+        #     (u, v, t, I): self.id()
+        #     for I in V 
+        #     for u in set(V) - set([I])
+        #     for v in set(V) - set([u]) - set([I]) 
+        #     for t in V
+        # }  # u can reach v without I in t steps
+        # reachable_via = {
+        #     (u, v, w, t, I): self.id()
+        #     for I in V
+        #     for u in set(V) - set([I])
+        #     for v in set(V) - set([u]) - set([I])
+        #     for t in V
+        #     for w in set(V) - set([v,u]) - set([I])
+        # }  # u can reach v via w without I in t steps
+
+        # def var_reachable(u, v, t, I):
+        #     return reachable[(u, v, t, I)]
+
+        # def var_reachable_via(u, v, w, t, I):
+        #     return reachable_via[(u, v, w, t, I)]
         
 
-        # MUST BE DEFINED FOR INNER TREE. WHAT IF U IS NOT IN THE INNER TREE???
-        # WHAT IF THE SYSTEM TRIES TO CHEAT AND GO AROUND?
-        # w MUST BE PART OF THE INNER TREE TOO YES?
-        for I in V:  # remove I and check if still connected
-            u = min(set(V) - set([I]))
-            for v in set(V) - {u} - set([I]):
-                for t in V:
-                    if t == 0:
-                        # reachable in first step if adjacent. If there is no edge, the reachable in 0 steps must be false and vice versa
-                        self.append([-self.var_edge(v, u), +var_reachable(v, 0, I)])
-                        self.append([+self.var_edge(v, u), -var_reachable(v, 0, I)])
-                    else:
-                        # if v is reachable in t steps without I...
-                        #   - then it must be reachable in t-1
-                        #   - or   it must be reachable via some w
-                        # if v is not reachable in t steps without I
-                        #   - then it must not be reachable in t-1 steps as well
-                        #   - then it must not be reachable via some w as well
-                        self.append([-var_reachable(v, t, I), +var_reachable(v, t - 1, I)] + [+var_reachable_via(v, w, t, I) for w in set(V) - set([I]) - {v, u}])
-                        self.append([+var_reachable(v, t, I), -var_reachable(v, t - 1, I)])
-                        for w in set(V) - set([I]) - {v, u}:
-                            self.append([+var_reachable(v, t, I), -var_reachable_via(v, w, t, I)])
-                            #either there is no edge between w and v OR v must be reachable via w OR w must be unreachable in t-1 steps
-                            self.append([+var_reachable_via(v, w, t, I), -var_reachable(w, t - 1, I), -self.var_edge(w, v)])
-                            #if w is unreachable in t-1 steps, v should be unreachable in t steps via w as well.
-                            self.append([-var_reachable_via(v, w, t, I), +var_reachable(w, t - 1, I)])
-                            #if there is no edge between w and v, v is unreachable via w in t steps
-                            self.append([-var_reachable_via(v, w, t, I), +self.var_edge(w, v)])
-                # must be reached
-                self.append([+var_reachable(v, max(V), I)])
+        # # MUST BE DEFINED FOR INNER TREE. WHAT IF U IS NOT IN THE INNER TREE???
+        # # WHAT IF THE SYSTEM TRIES TO CHEAT AND GO AROUND?
+        # # w MUST BE PART OF THE INNER TREE TOO YES?
+        # # A GOOD IDEA COULD BE TO SAY THAT REACHABLE ANYTHING IS FALSE IF NOT PART OF THE INNER TREE!!
+        # for I in V:  # remove I and check if still connected
+        #     for u in set(V) - set([I]):
+        #         for v in set(V) - set([u]) - set([I]):
+        #             for t in V:
+        #                 #either v and u is in the outer cycle or v is unreachable from u
+        #                 self.append([-var_reachable(u,v,t,I),-inner_tree[v]])
+        #                 self.append([-var_reachable(u,v,t,I),-inner_tree[u]])
+        #                 if t == 0:
+        #                     # reachable in first step if adjacent. If there is no edge, the reachable in 0 steps must be false and vice versa
+        #                     self.append([-self.var_edge(v, u), +var_reachable(u, v, 0, I)] + [inner_tree[u],inner_tree[v]])
+        #                     self.append([+self.var_edge(v, u), -var_reachable(u, v, 0, I)] + [inner_tree[u],inner_tree[v]])
+        #                 else:
+                            
+        #                     # if v is reachable in t steps without I...
+        #                     #   - then it must be reachable in t-1
+        #                     #   - or   it must be reachable via some w
+        #                     # if v is not reachable in t steps without I
+        #                     #   - then it must not be reachable in t-1 steps as well
+        #                     #   - then it must not be reachable via some w as well
+
+        #                     self.append([-var_reachable(u, v, t, I), +var_reachable(u, v, t - 1, I)] + [+var_reachable_via(u, v, w, t, I) for w in set(V) - set([I]) - set([v, u])] + [inner_tree[u],inner_tree[v]])
+        #                     self.append([+var_reachable(u, v, t, I), -var_reachable(u, v, t - 1, I)] + [inner_tree[u],inner_tree[v]])
+        #                     for w in set(V) - set([I]) - set([v, u]):
+        #                         self.append([-var_reachable_via(u,v,w,t,I),-inner_tree[v]])
+        #                         self.append([-var_reachable_via(u,v,w,t,I),-inner_tree[u]])
+        #                         self.append([-var_reachable_via(u,v,w,t-1,I),-inner_tree[v]])
+        #                         self.append([-var_reachable_via(u,v,w,t-1,I),-inner_tree[u]])
+        #                         self.append([+var_reachable(u, v, t, I), -var_reachable_via(u, v, w, t, I)] + [inner_tree[u],inner_tree[v]])
+        #                         #either there is no edge between w and v OR v must be reachable via w OR w must be unreachable in t-1 steps
+        #                         self.append([+var_reachable_via(u, v, w, t, I), -var_reachable(u, w, t - 1, I), -self.var_edge(w, v)] + [inner_tree[u],inner_tree[v]])
+        #                         #if w is unreachable in t-1 steps, v should be unreachable in t steps via w as well.
+        #                         self.append([-var_reachable_via(u, v, w, t, I), +var_reachable(u, w, t - 1, I)] + [inner_tree[u],inner_tree[v]])
+        #                         #if there is no edge between w and v, v is unreachable via w in t steps
+        #                         self.append([-var_reachable_via(u, v, w, t, I), +self.var_edge(w, v)] + [inner_tree[u],inner_tree[v]])
+        #             # must be reached or u or v are not in the outer cycle
+        #             self.append([+var_reachable(u, v, max(V), I),inner_tree[u],inner_tree[v]])
 
     def diameter2critical(self) -> None:
         """Ensure that the graph has diameter two and removing any edge results in a graph with diameter > 2"""
