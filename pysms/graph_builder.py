@@ -798,43 +798,30 @@ class GraphEncodingBuilder(IDPool, list):
 
         for u in V:
             inner_tree[u] = self.id()
-
-        # self.append([inner_tree[0]])
-        # self.append([inner_tree[1]])
-        # self.append([inner_tree[2]])
-        # self.append([inner_tree[3]])
-        # self.append([inner_tree[4]])
-        # self.append([inner_tree[5]])
-        # self.append([inner_tree[6]])
-        # self.append([inner_tree[7]])
-        # self.append([inner_tree[8]])
-        # self.append([inner_tree[9]])
-
-
-        #outer circle must have max two connections to each other
+        
+        
         for u in V:
             other_vertices = V.copy()
             other_vertices.remove(u)
+            #outer circle must have max two connections to each other
             for v,x,z in combinations(other_vertices,3):
                 self.append([-self.var_edge(u,v),-self.var_edge(u,x),-self.var_edge(u,z),
                             inner_tree[u],inner_tree[v],inner_tree[x],inner_tree[z]])
-        
-        #outer circle must be connected to maximum 1 tree vertex
-        for u in V:
-            other_vertices = V.copy()
-            other_vertices.remove(u)
+            #outer circle must be connected to maximum 1 tree vertex
             for v, x in combinations(other_vertices,2):
                 self.append([-self.var_edge(u,v), -self.var_edge(u,x),-inner_tree[v],-inner_tree[x],inner_tree[u]])
 
-        #outer circle must be connected to minimum 1 tree vertex
-        #doesnt do much?
-        for u in V:
-            other_vertices = V.copy()
-            other_vertices.remove(u)
+            #outer circle must be connected to minimum 1 tree vertex
+        #not neccessary for accuracy, but gives slight speedup
             self.append([self.CNF_AND((self.var_edge(u,v),inner_tree[v])) for v in other_vertices] + [inner_tree[u]])
 
+            
+
         #inner tree must have no cycles. (using ck-free technique)
-        for cycle_size in range(3,n):
+        #The forbidden cycles should be of size 3 to n/2, since the inner tree cannot be larger than that.
+        #note the + 1 is because of how range works..
+        for cycle_size in range(3,math.floor(n/2)+1):
+            print(cycle_size)
             for cycle in permutations(V, cycle_size):
                 if cycle[0] != min(cycle):
                     continue
@@ -842,16 +829,21 @@ class GraphEncodingBuilder(IDPool, list):
                     continue
                 self.append([-self.var_edge(cycle[i], cycle[(i + 1) % cycle_size]) for i in range(cycle_size)]+[-inner_tree[cycle[i]] for i in range(cycle_size)]) # at least one edge absent from potential cycle
 
-        #outer cycle must exist
-        and_statements=[]
-        for cycle_size in range(3,n):
-            for cycle in permutations(V,cycle_size):
-                if cycle[0] != min(cycle):
-                    continue
-                if cycle[1] > cycle[-1]:
-                    continue
-                and_statements.append(self.CNF_AND([self.var_edge(cycle[i],cycle[(i+1)%cycle_size]) for i in range(cycle_size)]+[-inner_tree[cycle[i]] for i in range(cycle_size)]))
-        self.append([self.CNF_OR(and_statements)])
+        #outer cycle must exist. 
+        #It must be size n/2 rounded up to n-1 in size, since the tree must have less vertices than the outer cycle and the tree must have at least 1 vertex
+        # and_statements=[]
+        # minguscounter = 0
+        # for cycle_size in range(math.ceil(n/2),n):
+        #     print(cycle_size)
+        #     for cycle in permutations(V,cycle_size):
+        #         minguscounter +=1
+        #         if cycle[0] != min(cycle):
+        #             continue
+        #         if cycle[1] > cycle[-1]:
+        #             continue
+        #         and_statements.append(self.CNF_AND([self.var_edge(cycle[i],cycle[(i+1)%cycle_size]) for i in range(cycle_size)]+[-inner_tree[cycle[i]] for i in range(cycle_size)]))
+        # print(minguscounter)
+        # self.append([self.CNF_OR(and_statements)])
 
 
         # inner tree must be 1 connected to itself
@@ -913,7 +905,64 @@ class GraphEncodingBuilder(IDPool, list):
                 # must be reached or u or v are not in the inner tree
                 self.append([+var_reachable(u, v, max(V)),-inner_tree[u],-inner_tree[v]])
 
+        # outer cycle must be 1 connected to itself
+        #together with the other rules, this means that it must form a cycle
+        reachable_outer = {
+            (u, v, t): self.id()
+            for u in set(V)
+            for v in set(V) - set([u])
+            for t in V
+        }  # u can reach v without I in t steps
+        reachable_via_outer = {
+            (u, v, w, t): self.id()
+            for u in set(V)
+            for v in set(V) - set([u])
+            for t in V
+            for w in set(V) - set([v,u])
+        }  # u can reach v via w without I in t steps
+
+        def var_reachable_outer(u, v, t):
+            return reachable_outer[(u, v, t)]
+
+        def var_reachable_via_outer(u, v, w, t):
+            return reachable_via_outer[(u, v, w, t)]
+        
+        for u in V:
+            for v in set(V) - set([u]):
+                for t in V:
+                    #either v and u is in the outer cycle or v is unreachable from u
+                    self.append([-var_reachable_outer(u,v,t),-inner_tree[v]])
+                    self.append([-var_reachable_outer(u,v,t),-inner_tree[u]])
+                    if t == 0:
+                        # reachable in first step if adjacent. If there is no edge, the reachable in 0 steps must be false and vice versa
+                        self.append([-self.var_edge(v, u), +var_reachable_outer(u, v, 0)] + [inner_tree[u],inner_tree[v]])
+                        self.append([+self.var_edge(v, u), -var_reachable_outer(u, v, 0)] + [inner_tree[u],inner_tree[v]])
+                    else:
+                        
+                        # if v is reachable in t steps without I...
+                        #   - then it must be reachable in t-1
+                        #   - or   it must be reachable via some w
+                        # if v is not reachable in t steps without I
+                        #   - then it must not be reachable in t-1 steps as well
+                        #   - then it must not be reachable via some w as well
+                        self.append([-var_reachable_outer(u, v, t), +var_reachable_outer(u, v, t - 1)] + [+var_reachable_via_outer(u, v, w, t) for w in set(V) - set([v, u])] + [inner_tree[u],inner_tree[v]])
+                        self.append([+var_reachable_outer(u, v, t), -var_reachable_outer(u, v, t - 1)] + [inner_tree[u],inner_tree[v]])
+                        for w in set(V) - set([v, u]):
+                            self.append([-var_reachable_via_outer(u,v,w,t),-inner_tree[v]])
+                            self.append([-var_reachable_via_outer(u,v,w,t),-inner_tree[u]])
+                            self.append([+var_reachable_outer(u, v, t), -var_reachable_via_outer(u, v, w, t)] + [inner_tree[u],inner_tree[v]])
+                            #either there is no edge between w and v OR v must be reachable via w OR w must be unreachable in t-1 steps
+                            self.append([+var_reachable_via_outer(u, v, w, t), -var_reachable_outer(u, w, t - 1), -self.var_edge(w, v)] + [inner_tree[u],inner_tree[v]])
+                            #if w is unreachable in t-1 steps, v should be unreachable in t steps via w as well.
+                            self.append([-var_reachable_via_outer(u, v, w, t), +var_reachable_outer(u, w, t - 1)] + [inner_tree[u],inner_tree[v]])
+                            #if there is no edge between w and v, v is unreachable via w in t steps
+                            self.append([-var_reachable_via_outer(u, v, w, t), +self.var_edge(w, v)] + [inner_tree[u],inner_tree[v]])
+                # must be reached or u or v are not in the outer cycle
+                self.append([+var_reachable_outer(u, v, max(V)),inner_tree[u],inner_tree[v]])
+
     def diameter2critical(self) -> None:
+
+        
         """Ensure that the graph has diameter two and removing any edge results in a graph with diameter > 2"""
         g = self
         V = g.V
