@@ -89,9 +89,7 @@ def getDefaultParser():
 
     constraint_args.add_argument("--outerplanar_schnyder", "--ops", action="store_true", help="Outerplanarity testing based on Schnyder orderings 2|3")
 
-    constraint_args.add_argument("--halintree",type=int,help="generate the inner tree of a Halin graph")
-
-    constraint_args.add_argument("--halin", type=int, help="the generated graphs must be Halin graphs")
+    constraint_args.add_argument("--halin", action="store_true", help="the generated graphs must be Halin graphs")
 
 
     return parser
@@ -423,23 +421,10 @@ class GraphEncodingBuilder(IDPool, list):
         if args.outerplanar_schnyder:
             self.planar_encoding_schnyder(self.V, self.var_edge, self, self, True, False)
 
-        if args.halintree:
-            k = args.halintree
-            #planarity test does not do anything and wastes runtime
-            #self.paramsSMS["planar"] = 5
-
-            #is it neccessary for this much ckfree?
-            for i in range(3,len(self.V)):
-                self.ckFree(i)
-            self.minConnectivity(1)
-            self.halintree(k)
-
         if args.halin:
-            k = args.halin
             self.paramsSMS["planar"] = 5
             self.minConnectivity(3)
-            self.halin(k)
-
+            self.halin()
 
         if args.even_degrees:
             for u in self.V:
@@ -789,7 +774,7 @@ class GraphEncodingBuilder(IDPool, list):
                 remaining_vertices.remove(x)
                 self.append([-self.var_edge(u,v),-self.var_edge(u,x)]+[self.var_edge(u,i) for i in remaining_vertices])
 
-    def halin(self, k):
+    def halin(self):
         g = self
         V = g.V
         n = len(V)
@@ -812,7 +797,7 @@ class GraphEncodingBuilder(IDPool, list):
                 self.append([-self.var_edge(u,v), -self.var_edge(u,x),-inner_tree[v],-inner_tree[x],inner_tree[u]])
 
             #outer circle must be connected to minimum 1 tree vertex
-        #not neccessary for accuracy, but gives slight speedup
+            #not neccessary for accuracy, but gives slight speedup
             self.append([self.CNF_AND((self.var_edge(u,v),inner_tree[v])) for v in other_vertices] + [inner_tree[u]])
 
             
@@ -867,11 +852,6 @@ class GraphEncodingBuilder(IDPool, list):
         def var_reachable_via(u, v, w, t):
             return reachable_via[(u, v, w, t)]
         
-
-        # MUST BE DEFINED FOR INNER TREE. WHAT IF U IS NOT IN THE INNER TREE???
-        # WHAT IF THE SYSTEM TRIES TO CHEAT AND GO AROUND?
-        # w MUST BE PART OF THE INNER TREE TOO YES?
-        # A GOOD IDEA COULD BE TO SAY THAT REACHABLE ANYTHING IS FALSE IF NOT PART OF THE INNER TREE!!
         for u in V:
             for v in set(V) - set([u]):
                 for t in V:
