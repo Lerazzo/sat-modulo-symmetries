@@ -743,36 +743,6 @@ class GraphEncodingBuilder(IDPool, list):
             for u, v in permutations(V,2):
                 self.append([+var_u_smaller_v_i(u,v,1), +var_u_smaller_v_i(u,v,2)])
                 self.append([-var_u_smaller_v_i(u,v,1), -var_u_smaller_v_i(u,v,2)])
-    
-    def halintree(self, k):
-        g = self
-        V = g.V
-
-        #there cannot be edges between the outer cycle.
-        for u,v in combinations(V[0:k],2):
-            self.append([-self.var_edge(u,v)])
-
-        #there can only be 1 edge for an outer cycle vertex to the tree.
-        #each outer cycle vertex must have one edge missing for all edgepairs
-        for u in V[0:k]:
-            for v, x in combinations(V[k:len(V)],2):
-                self.append([-self.var_edge(u,v), -self.var_edge(u,x)])
-
-        #there cannot be exactly one or two edges for vertices in the inner tree
-        #e(u,v) => (e(u,v2) OR e(u,v3) OR e(u,v4) ...) in CNF
-        #(e(u,v) AND e(u,x)) => (e(u,v3) OR e(u,v4) OR e(u,v5) ..) in CNF
-        for u in V[k:len(V)]:
-            other_vertices = V.copy()
-            other_vertices.remove(u)
-            for v in other_vertices:
-                remaining_vertices = other_vertices.copy()
-                remaining_vertices.remove(v)
-                self.append([-self.var_edge(u,v)]+[self.var_edge(u,i) for i in remaining_vertices])
-            for v, x in combinations(other_vertices,2):
-                remaining_vertices = other_vertices.copy()
-                remaining_vertices.remove(v)
-                remaining_vertices.remove(x)
-                self.append([-self.var_edge(u,v),-self.var_edge(u,x)]+[self.var_edge(u,i) for i in remaining_vertices])
 
     def halin(self):
         g = self
@@ -783,7 +753,6 @@ class GraphEncodingBuilder(IDPool, list):
 
         for u in V:
             inner_tree[u] = self.id()
-        
         
         for u in V:
             other_vertices = V.copy()
@@ -805,31 +774,14 @@ class GraphEncodingBuilder(IDPool, list):
         #inner tree must have no cycles. (using ck-free technique)
         #The forbidden cycles should be of size 3 to n/2, since the inner tree cannot be larger than that.
         #note the + 1 is because of how range works..
-        for cycle_size in range(3,math.floor(n/2)+1):
-            print(cycle_size)
+        for cycle_size in range(3,max(math.floor(n/2)+1,4)):
             for cycle in permutations(V, cycle_size):
                 if cycle[0] != min(cycle):
                     continue
                 if cycle[1] > cycle[-1]:
                     continue
+                print(cycle)
                 self.append([-self.var_edge(cycle[i], cycle[(i + 1) % cycle_size]) for i in range(cycle_size)]+[-inner_tree[cycle[i]] for i in range(cycle_size)]) # at least one edge absent from potential cycle
-
-        #outer cycle must exist. 
-        #It must be size n/2 rounded up to n-1 in size, since the tree must have less vertices than the outer cycle and the tree must have at least 1 vertex
-        # and_statements=[]
-        # minguscounter = 0
-        # for cycle_size in range(math.ceil(n/2),n):
-        #     print(cycle_size)
-        #     for cycle in permutations(V,cycle_size):
-        #         minguscounter +=1
-        #         if cycle[0] != min(cycle):
-        #             continue
-        #         if cycle[1] > cycle[-1]:
-        #             continue
-        #         and_statements.append(self.CNF_AND([self.var_edge(cycle[i],cycle[(i+1)%cycle_size]) for i in range(cycle_size)]+[-inner_tree[cycle[i]] for i in range(cycle_size)]))
-        # print(minguscounter)
-        # self.append([self.CNF_OR(and_statements)])
-
 
         # inner tree must be 1 connected to itself
         reachable = {
